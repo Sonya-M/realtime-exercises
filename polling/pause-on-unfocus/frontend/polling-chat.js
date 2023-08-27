@@ -59,7 +59,7 @@ const template = (user, msg) =>
 function rafTimer(time) {
   if (timeToMakeNextRequest <= time) {
     getNewMsgs();
-    timeToMakeNextRequest = time + INTERVAL;
+    timeToMakeNextRequest = performance.now() + INTERVAL;
   }
   requestAnimationFrame(rafTimer);
 }
