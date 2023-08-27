@@ -32,11 +32,46 @@ async function postNewMsg(user, text) {
 }
 
 async function getNewMsgs() {
-  /*
-   *
-   * code goes here
-   *
-   */
+  let reader;
+  const utf8Decoder = new TextDecoder('utf-8')
+  try {
+    const res = await fetch('/msgs')
+    // reader for the stream of data
+    reader = res.body.getReader() // not res.json because we're not waiting for the end, the connection will remain open
+  } catch (err) {
+    console.error(err)
+  }
+  presence.innerHTML = '🟢';
+
+  let readerResponse;
+  let done;
+  do {
+    try {
+      readerResponse = await reader.read();
+
+    } catch (err) {
+      console.error(err)
+      presence.innerText = '🔴';
+      return;
+    }
+    const chunk = utf8Decoder.decode(readerResponse.value, { stream: true })
+    // theoretically, connection could be closed by server
+    done = readerResponse.done;
+    // can get empty chunks of data
+    if (chunk) {
+      try {
+        const json = JSON.parse(chunk)
+        allChat = json.msg;
+        render()
+      } catch (err) {
+        console.error(err)
+
+      }
+    }
+
+  } while (!done); // in our case, equivalent to while(true)
+  presence.innerText = '🔴';
+
 }
 
 function render() {
