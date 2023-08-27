@@ -35,11 +35,18 @@ async function getNewMsgs() {
   try {
     const res = await fetch("/poll");
     json = await res.json();
+
+    if (res.status >= 400) {
+      throw new Error('request failed', res.status)
+    }
+    allChat = json.msg;
+    render();
+    nFailedTries = 0;
   } catch (err) {
     console.error("polling error", err)
+    nFailedTries++;
   }
-  allChat = json.msg;
-  render();
+
 }
 
 function render() {
@@ -55,13 +62,18 @@ function render() {
 const template = (user, msg) =>
   `<li class="collection-item"><span class="badge">${user}</span>${msg}</li>`;
 
+// linear strategy: add 5 seconds to time till next retry
+// cf exponential - double the time on every failure
+const BACKOFF = 5000;
+const MAX_INTERVAL = 120000;
+let nFailedTries = 0;
 let timeToMakeNextRequest = 0;
 async function rafTimer(time) {
   if (timeToMakeNextRequest <= time) {
     console.log('before req', { timeToMakeNextRequest, time })
     console.log('perf now', performance.now())
     await getNewMsgs();
-    timeToMakeNextRequest = performance.now() + INTERVAL;
+    timeToMakeNextRequest = performance.now() + INTERVAL + Math.min(nFailedTries * BACKOFF, MAX_INTERVAL);
     console.log('after req', { timeToMakeNextRequest })
   }
   requestAnimationFrame(rafTimer)
